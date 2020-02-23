@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<!-- saved from url=(0043)http://bl.ocks.org/syntagmatic/raw/4963194/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style>
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+  width: 10px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+
+
+#tooltip {
+  position: absolute;
+  max-width: 200px;
+  height: auto;
+  padding: 5px;
+  background-color: orange;
+  pointer-events: none;
+  font-family: sans-serif;
+  font-size: 12px;
+  color: #fff;
+  border-radius: 5px;
+}
+#container{
+  position: relative;
+  width: 1000px;
+  height: 1000px;
+  border: 2px solid orange;
+  background-color: #f5f5f5;
+}
+
+#my_dataviz{
+  position: absolute;
+  right: 0;
+  top: 10px;
+}
+
+#my_colorviz{
+  position: absolute;
+  left: 0;
+  top: 10px;
+}
+</style>
+</head>
+<body>
+  <div id="container">
+    <svg id="my_dataviz" height=300 width=450></svg>
+    <svg id="my_colorviz" height=300 width=450></svg>
+  </div>
+  <div id="tooltip"></div>
+<script src="./d3.v3.min.js"></script>
+<script>
+let shapesOrder = ["flower", "tree", "fruit"];
+
+let colors = {
+  "orchid":Math.ceil(Math.random()*20),
+  "orchid":Math.ceil(Math.random()*20),
+  "coconut":Math.ceil(Math.random()*20),
+  "apple":Math.ceil(Math.random()*20),
+  "rose":Math.ceil(Math.random()*20),
+  "orange":Math.ceil(Math.random()*20),
+  "coffee":Math.ceil(Math.random()*20),
+  "pineapple":Math.ceil(Math.random()*20),
+  "mango":Math.ceil(Math.random()*20),
+  "banana":Math.ceil(Math.random()*20)
+}
+
+const graph = {
+  nodes: [
+    { x: 453, y: 892, type: "flower", name: "orchid" },
+    { x: 586, y: 378, type: "tree", name: "coconut" },
+    { x: 928, y: 40, type: "flower", name: "orchid" },
+    { x: 384, y: 770, type: "tree", name: "apple" },
+    { x: 595, y: 863, type: "flower", name: "rose" },
+    { x: 888, y: 687, type: "fruit", name: "orange" },
+    { x: 538, y: 611, type: "flower", name: "coffee" },
+    { x: 495, y: 139, type: "fruit", name: "pineapple" },
+    { x: 869, y: 156, type: "flower", name: "rose" },
+    { x: 289, y: 424, type: "tree", name: "mango" },
+    { x: 852, y: 981, type: "flower", name: "rose" },
+    { x: 817, y: 43, type: "fruit", name: "pineapple" },
+    { x: 711, y: 702, type: "fruit", name: "banana" },
+    { x: 127, y: 529, type: "flower", name: "rose" },
+    { x: 802, y: 623, type: "fruit", name: "pineapple" },
+    { x: 257, y: 658, type: "fruit", name: "pineapple" },
+    { x: 185, y: 101, type: "fruit", name: "banana" },
+    { x: 772, y: 561, type: "flower", name: "orchid" },
+    { x: 797, y: 132, type: "flower", name: "rose" }
+  ],
+  links: []
+};
+
+graph.nodes.forEach((node, i) => {
+  node.index = i+1
+})
+
+function groupBy( array , f )
+{
+  var groups = {};
+  array.forEach( function( o,i )
+  {
+    var group = JSON.stringify( f(o) );
+    groups[group] = groups[group] || [];
+    groups[group].push( o );  
+  });
+  return Object.keys(groups).map( function( group )
+  {
+    return groups[group]; 
+  })
+}
+
+var result = groupBy(graph.nodes, function(item)
+{
+  return [item.name, item.type];
+});
+result = result.filter((res) =>{
+  return res.length > 1;
+});
+
+
+result.forEach(res => {
+  res.forEach((link, i) => {
+      let currentIndex = res[0].index;
+      let nextIndex = res[i].index;
+      graph.links.push({target: currentIndex-1, source: nextIndex-1});  
+  })
+})
+
+var logos = {
+  flower: {
+    path: "M 23,65 A 40 40 0 0 0 43,90 A 40 40 0 0 1 38,70 A 45 30 0 1 0 23,65 ", 
+    type: 'chat'
+  },
+  tree: {
+    path: "M 63 70 A 28 28 0 1 0 40 34 21 21 0 1 0 27 70 z   ", 
+    type : 'cloud'
+  },
+  fruit: {
+    path: "M 90,50 A 20 20 0 1 0 50,25 A 20 20 0 1 0 10,50 L 50,100  z", 
+    type: 'love'
+  }
+};
+
+var width = 1000,
+    height = 1000;
+
+var color = d3.scale.category20();
+var tooltip = d3.select("#tooltip").style('opacity', 0);
+var force = d3.layout.force()
+    .charge(-120)
+    .linkDistance(100)
+    .size([width, height]);
+
+var svg = d3.select("#container").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+      .enter().append("line")
+      .attr("class", "link")
+      .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node = svg.selectAll(".node")
+      .data(graph.nodes)
+      .enter().append("g")
+      .attr("class", "node")
+      .on("mouseover", function(d) {
+        tooltip.style("opacity", 1);
+        tooltip.html(`<p>Name : ${d.name}</p><p>Type: ${d.type}</p><p>x:${d.x}, y:${d.y}</p>`)
+            .style("left", d3.event.pageX + "px")
+            .style("top", (d3.event.pageY + 28) + "px");
+      })
+      .on("mouseout", function(d){
+        tooltip.style("opacity", 0)
+      });
+
+  node.append("path")
+      .attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")";
+      })
+      .attr("d", function(d) {
+        if (d.type in logos) return logos[d.type].path;
+        return logos.fruit.path;
+      })
+      .attr("transform", "scale(0.2)")
+      .style("fill", function(d) { return color(colors[d.name]); });
+
+  node.append("title")
+      .text(function(d) { return d.name; });
+
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("transform", function(d) { return "translate(" + (d.x-12) + "," + (d.y-12) + ")"; });
+  });
+
+  let topPos = 0
+  var svgCategeries = d3.select("#my_dataviz");
+  Object.keys(logos).forEach((logo, i) => {
+    topPos += 30  ;
+    svgCategeries.append("circle").attr("cx",200).attr("cy",topPos).attr("r", 6).style("fill", color(i))
+    svgCategeries.append("text").attr("x", 220).attr("y", topPos).text(logo + " = " + logos[logo].type).style("font-size", "15px").attr("alignment-baseline","middle")
+
+  })
+
+  var svgLabels = d3.select("#my_colorviz");
+  let topPosNode = 0
+  Object.keys(colors).forEach((label, i) => {
+    topPosNode += 30  ;
+    svgLabels.append("circle").attr("cx",30).attr("cy",topPosNode).attr("r", 6).style("fill", color(colors[label]))
+    svgLabels.append("text").attr("x", 60).attr("y", topPosNode).text(label).style("font-size", "15px").attr("alignment-baseline","middle")
+
+  })
+</script>
+</body></html>
